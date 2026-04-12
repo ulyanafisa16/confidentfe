@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --brand: #1a6b5e;
+  --brand-light: #e1f5ee;
+  --brand-mid: #1d9e75;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  @apply bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-700 rounded-full; }
