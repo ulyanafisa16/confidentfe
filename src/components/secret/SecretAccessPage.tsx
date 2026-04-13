@@ -27,7 +27,6 @@ export default function SecretAccessPage({ token }: Props) {
     const fetchMeta = async () => {
       try {
         const data = await getSecretInfo(token)
-        console.log('Secret info:', data)  // ← tambah ini
         
         const meta: SecretMetaResponse = {
           token: data.token,
@@ -40,7 +39,6 @@ export default function SecretAccessPage({ token }: Props) {
           status: data.can_access ? 'active' : 'expired',
         }
         
-        console.log('Meta mapped:', meta)  // ← tambah ini
         setMeta(meta)
         if (!data.can_access) {
           setState('expired')

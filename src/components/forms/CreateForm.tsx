@@ -125,20 +125,7 @@ export default function CreateForm() {
         ...extraFields,
       }
 
-      console.log('Final payload keys:', Object.keys(payload))
-      console.log('Encrypted values:', {
-      iv: encResult.encryption_iv,
-      tag: encResult.encryption_tag,
-      salt: encResult.encryption_salt,
-      payload_length: encResult.encrypted_payload.length,
-    })
-
-      console.log('Emails state:', emails)
-      console.log('Payload yang dikirim:', {
-        email_whitelist: emails,
-        secret_type: tab,
-      })
-
+      
       const res = await createSecret(payload as CreateSecretPayload)
 
       // Step 4 — Update quota anonymous
@@ -150,7 +137,6 @@ export default function CreateForm() {
       setResult(res)
 
     } catch (e: any) {
-      console.log('Create error detail:', e?.response?.data)
       const data = e?.response?.data
       if (data?.errors) {
         const firstError = Object.values(data.errors)[0]
@@ -373,7 +359,6 @@ const handleCopy = () => {
         <EmailWhitelist 
           emails={emails} 
           onChange={(newEmails) => {
-            console.log('setEmails called with:', newEmails)  // ← tambah ini
             setEmails(newEmails)
           }} 
         />

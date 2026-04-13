@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { DM_Sans, DM_Serif_Display } from 'next/font/google'
 import './globals.css'
 import Navbar from '../components/ui/Navbar'
+import Footer from '../components/ui/Footer'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -22,16 +23,14 @@ export const metadata: Metadata = {
   description: 'Send passwords, API keys, or confidential notes through a secure link.',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`}>
       <body className="font-sans">
         <Navbar />
         <main>{children}</main>
+        <Footer />
       </body>
     </html>
   )
