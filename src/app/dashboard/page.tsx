@@ -11,6 +11,7 @@ import {
 import { getMySecrets, revokeSecret, getProfile } from '../../lib/api'
 import type { MySecret, UserProfile } from '../../types'
 import Button from '../../components/ui/Button'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type StatusFilter = 'all' | 'active' | 'expired' | 'revoked'
 
@@ -61,6 +62,12 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1)
   const [revoking, setRevoking] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+  open: boolean
+  secretId: string
+  title: string
+  message: string
+  } | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -82,21 +89,31 @@ export default function DashboardPage() {
   // Reset page saat filter berubah
   useEffect(() => { setPage(1) }, [filter])
 
-  const handleRevoke = async (id: string) => {
-    if (!confirm('Yakin ingin merevoke secret ini?')) return
-    setRevoking(id)
-    try {
-      await revokeSecret(id)
-      setSecrets((prev) =>
-        prev.map((s) => s.id === id ? { ...s, status: 'revoked' as const } : s)
-      )
-    } catch (e: any) {
-      console.log('Revoke error:', e?.response?.data)
-      alert('Gagal merevoke secret.')
-    } finally {
-      setRevoking(null)
-    }
+  const handleRevoke = (id: string) => {
+  setConfirmDialog({
+    open: true,
+    secretId: id,
+    title: 'Revoke secret ini?',
+    message: 'Secret dan semua link-nya akan dihapus permanen. Penerima tidak akan bisa membuka link tersebut lagi. Tindakan ini tidak bisa dibatalkan.',
+  })
+}
+
+const confirmRevoke = async () => {
+  if (!confirmDialog) return
+  const id = confirmDialog.secretId
+  setConfirmDialog(null)
+  setRevoking(id)
+  try {
+    await revokeSecret(id)
+    setSecrets((prev) =>
+      prev.map((s) => s.id === id ? { ...s, status: 'revoked' as const } : s)
+    )
+  } catch {
+    alert('Gagal merevoke secret.')
+  } finally {
+    setRevoking(null)
   }
+}
 
   const handleCopyLink = (secret: MySecret) => {
     const activeLink = secret.links.find(l => l.is_active) ?? secret.links[0]
@@ -269,6 +286,20 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog?.open && (
+        <ConfirmDialog
+          isOpen={confirmDialog.open}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel="Ya, revoke secret"
+          cancelLabel="Batal"
+          variant="danger"
+          onConfirm={confirmRevoke}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
 
     </div>
