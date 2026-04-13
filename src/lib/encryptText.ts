@@ -5,6 +5,9 @@ function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   let binary = ''
   bytes.forEach((b) => (binary += String.fromCharCode(b)))
   return btoa(binary)
+    .replace(/\+/g, '-')   // ← URL-safe
+    .replace(/\//g, '_')   // ← URL-safe
+    .replace(/=/g, '')     // ← hapus padding
 }
 
 export async function encryptSecret(plaintext: string, password?: string) {

@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import EmailWhitelist from '../../components/forms/EmailWhitelist'
 import { createSecret } from '../../lib/api'
-import type { CreateSecretResponse } from '../../types'
+import type { CreateSecretPayload, CreateSecretResponse } from '../../types'
 import { getFingerprint, getAnonSession, incrementAnonCount, getAnonRemainingQuota } from '../../lib/fingerprint'
 
 
@@ -30,10 +30,12 @@ const EXPIRE_OPTIONS = [
 
 // ── Web Crypto helpers ─────────────────────────────────────────────────────
 
-function bufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
+function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   let binary = ''
   bytes.forEach((b) => (binary += String.fromCharCode(b)))
+  // Gunakan standard base64, bukan URL-safe
+  // Pastikan padding benar
   return btoa(binary)
 }
 
@@ -65,8 +67,6 @@ export default function CreateForm() {
   const handleSubmit = async () => {
     if (tab === 'text' && !content.trim()) { setError('Secret tidak boleh kosong'); return }
     if (tab === 'file' && !selectedFile) { setError('Pilih file terlebih dahulu'); return }
-
-    // Cek quota anonymous
     if (!isLoggedIn && anonQuota <= 0) {
       setError('Kamu sudah mencapai batas 3 secret per hari. Login untuk membuat lebih banyak.')
       return
@@ -76,20 +76,26 @@ export default function CreateForm() {
     setLoading(true)
 
     try {
-      // Generate fingerprint untuk anonymous user
+      // Step 1 — Generate fingerprint DULU sebelum enkripsi
       let fingerprintHash: string | undefined
       if (!isLoggedIn) {
         fingerprintHash = await getFingerprint()
       }
 
-      let encrypted
-      let extraFields = {}
+      // Step 2 — Enkripsi konten
+      let encResult: {
+        encrypted_payload: string
+        encryption_iv: string
+        encryption_tag: string
+        encryption_salt: string
+        raw_key_b64: string
+      }
+      let extraFields: Record<string, unknown> = {}
 
       if (tab === 'file' && selectedFile) {
         const { encryptFile } = await import('../../lib/encryptFile')
         const enc = await encryptFile(selectedFile, encryptionPassword || undefined)
-        encrypted = enc
-        setEncryptedKey(enc.raw_key_b64)
+        encResult = enc
         extraFields = {
           original_filename: enc.original_filename,
           mime_type: enc.mime_type,
@@ -97,33 +103,52 @@ export default function CreateForm() {
         }
       } else {
         const { encryptSecret } = await import('../../lib/encryptText')
-        encrypted = await encryptSecret(content, encryptionPassword || undefined)
-        setEncryptedKey(encrypted.raw_key_b64)
+        encResult = await encryptSecret(content, encryptionPassword || undefined)
       }
 
-      const res = await createSecret({
+      setEncryptedKey(encResult.raw_key_b64)
+
+      // Step 3 — Kirim ke API
+      const payload = {
         secret_type: tab,
-        encrypted_payload: encrypted.encrypted_payload,
-        encryption_iv: encrypted.encryption_iv,
-        encryption_tag: encrypted.encryption_tag,
-        encryption_salt: encrypted.encryption_salt,
+        encrypted_payload: encResult.encrypted_payload,
+        encryption_iv: encResult.encryption_iv,
+        encryption_tag: encResult.encryption_tag,
+        encryption_salt: encResult.encryption_salt,
         max_views: maxViews,
-        expires_in_hours: expiresInHours,  // ← ganti ini
+        expires_in_hours: expiresInHours,
         email_whitelist: emails,
-        access_password: accessPassword || undefined,
         notify_on_open: notifyOnOpen,
         allow_preview: allowPreview,
-        fingerprint_hash: fingerprintHash,
+        ...(accessPassword ? { access_password: accessPassword } : {}),
+        ...(fingerprintHash ? { fingerprint_hash: fingerprintHash } : {}),
         ...extraFields,
+      }
+
+      console.log('Final payload keys:', Object.keys(payload))
+      console.log('Encrypted values:', {
+      iv: encResult.encryption_iv,
+      tag: encResult.encryption_tag,
+      salt: encResult.encryption_salt,
+      payload_length: encResult.encrypted_payload.length,
+    })
+
+      console.log('Emails state:', emails)
+      console.log('Payload yang dikirim:', {
+        email_whitelist: emails,
+        secret_type: tab,
       })
 
-      // Update quota setelah berhasil
+      const res = await createSecret(payload as CreateSecretPayload)
+
+      // Step 4 — Update quota anonymous
       if (!isLoggedIn && fingerprintHash) {
         incrementAnonCount(fingerprintHash)
         setAnonQuota(prev => Math.max(0, prev - 1))
       }
 
       setResult(res)
+
     } catch (e: any) {
       console.log('Create error detail:', e?.response?.data)
       const data = e?.response?.data
@@ -345,7 +370,13 @@ const handleCopy = () => {
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
           Email whitelist <span className="normal-case font-normal">(optional)</span>
         </label>
-        <EmailWhitelist emails={emails} onChange={setEmails} />
+        <EmailWhitelist 
+          emails={emails} 
+          onChange={(newEmails) => {
+            console.log('setEmails called with:', newEmails)  // ← tambah ini
+            setEmails(newEmails)
+          }} 
+        />
       </div>
 
       {/* ENCRYPTION PASSWORD */}

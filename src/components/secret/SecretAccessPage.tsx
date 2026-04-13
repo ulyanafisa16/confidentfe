@@ -24,38 +24,36 @@ export default function SecretAccessPage({ token }: Props) {
   const [revealing, setRevealing] = useState(false)
 
   useEffect(() => {
-  const fetchMeta = async () => {
-    try {
-      const data = await getSecretInfo(token)
-      
-      // Map response Django ke SecretMetaResponse
-      const meta: SecretMetaResponse = {
-        token: data.token,
-        expires_at: data.expires_at,
-        max_views: 0,
-        views_remaining: data.views_remaining,
-        is_password_protected: data.requires_password ?? false,
-        is_email_restricted: data.requires_email ?? false,
-        allow_preview: true,
-        status: data.can_access ? 'active' : 'expired',
-      }
-      
-      setMeta(meta)
-      if (!data.can_access) {
-        setState('expired')
-      } else {
-        setState('locked')
-      }
-    } catch (e: any) {
-      if (e?.response?.status === 404) {
-        setState('expired')
-      } else {
-        setState('error')
+    const fetchMeta = async () => {
+      try {
+        const data = await getSecretInfo(token)
+        console.log('Secret info:', data)  // ← tambah ini
+        
+        const meta: SecretMetaResponse = {
+          token: data.token,
+          expires_at: data.expires_at,
+          max_views: 0,
+          views_remaining: data.views_remaining,
+          is_password_protected: data.requires_password,
+          is_email_restricted: data.requires_email,
+          allow_preview: true,
+          status: data.can_access ? 'active' : 'expired',
+        }
+        
+        console.log('Meta mapped:', meta)  // ← tambah ini
+        setMeta(meta)
+        if (!data.can_access) {
+          setState('expired')
+        } else {
+          setState('locked')
+        }
+      } catch (e: any) {
+        if (e?.response?.status === 404) setState('expired')
+        else setState('error')
       }
     }
-  }
-  fetchMeta()
-}, [token])
+    fetchMeta()
+  }, [token])
 
   const handleReveal = async (password?: string, email?: string) => {
   setRevealing(true)
