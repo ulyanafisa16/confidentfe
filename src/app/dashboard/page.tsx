@@ -8,14 +8,14 @@ import {
   XCircle, AlertCircle, Copy, Check,
   FileText, File, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import { getMySecrets, revokeSecret, getProfile } from '../../lib/api'
+import { getMySecrets, revokeSecret, getProfile, deleteSecret } from '../../lib/api'
 import type { MySecret, UserProfile } from '../../types'
 import Button from '../../components/ui/Button'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 type StatusFilter = 'all' | 'active' | 'expired' | 'revoked'
 
-const PER_PAGE = 10
+const PER_PAGE = 5
 
 function StatusBadge({ status }: { status: MySecret['status'] }) {
   const map = {
@@ -63,10 +63,14 @@ export default function DashboardPage() {
   const [revoking, setRevoking] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{
-  open: boolean
-  secretId: string
-  title: string
-  message: string
+    open: boolean
+    secretId: string
+    title: string
+    message: string
+  } | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean
+    secretId: string
   } | null>(null)
 
   useEffect(() => {
@@ -86,34 +90,49 @@ export default function DashboardPage() {
     fetchAll()
   }, [router])
 
-  // Reset page saat filter berubah
   useEffect(() => { setPage(1) }, [filter])
 
   const handleRevoke = (id: string) => {
-  setConfirmDialog({
-    open: true,
-    secretId: id,
-    title: 'Revoke secret ini?',
-    message: 'Secret dan semua link-nya akan dihapus permanen. Penerima tidak akan bisa membuka link tersebut lagi. Tindakan ini tidak bisa dibatalkan.',
-  })
-}
-
-const confirmRevoke = async () => {
-  if (!confirmDialog) return
-  const id = confirmDialog.secretId
-  setConfirmDialog(null)
-  setRevoking(id)
-  try {
-    await revokeSecret(id)
-    setSecrets((prev) =>
-      prev.map((s) => s.id === id ? { ...s, status: 'revoked' as const } : s)
-    )
-  } catch {
-    alert('Gagal merevoke secret.')
-  } finally {
-    setRevoking(null)
+    setConfirmDialog({
+      open: true,
+      secretId: id,
+      title: 'Revoke secret ini?',
+      message: 'Secret dan semua link-nya akan dimatikan permanen. Penerima tidak akan bisa membuka link tersebut lagi. Tindakan ini tidak bisa dibatalkan.',
+    })
   }
-}
+
+  const confirmRevoke = async () => {
+    if (!confirmDialog) return
+    const id = confirmDialog.secretId
+    setConfirmDialog(null)
+    setRevoking(id)
+    try {
+      await revokeSecret(id)
+      setSecrets((prev) =>
+        prev.map((s) => s.id === id ? { ...s, status: 'revoked' as const } : s)
+      )
+    } catch {
+      alert('Gagal merevoke secret.')
+    } finally {
+      setRevoking(null)
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    setDeleteDialog({ open: true, secretId: id })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteDialog) return
+    const id = deleteDialog.secretId
+    setDeleteDialog(null)
+    try {
+      await deleteSecret(id)
+      setSecrets((prev) => prev.filter((s) => s.id !== id))
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Gagal menghapus riwayat.')
+    }
+  }
 
   const handleCopyLink = (secret: MySecret) => {
     const activeLink = secret.links.find(l => l.is_active) ?? secret.links[0]
@@ -123,7 +142,6 @@ const confirmRevoke = async () => {
     setTimeout(() => setCopiedId(null), 2500)
   }
 
-  // Filter & paginate
   const filtered = secrets.filter((s) => filter === 'all' || s.status === filter)
   const totalPages = Math.ceil(filtered.length / PER_PAGE)
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
@@ -222,6 +240,8 @@ const confirmRevoke = async () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Actions — di dalam map, bisa akses secret */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {secret.status === 'active' && activeLink && (
                       <>
@@ -235,14 +255,26 @@ const confirmRevoke = async () => {
                         <button
                           onClick={() => handleRevoke(secret.id)}
                           disabled={revoking === secret.id}
-                          title="Revoke"
+                          title="Revoke secret"
                           className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50"
                         >
                           <Trash2 size={14} />
                         </button>
                       </>
                     )}
+
+                    {/* Tombol delete untuk secret yang sudah tidak active */}
+                    {secret.status !== 'active' && (
+                      <button
+                        onClick={() => handleDelete(secret.id)}
+                        title="Hapus riwayat"
+                        className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
+
                 </div>
               </div>
             )
@@ -288,7 +320,7 @@ const confirmRevoke = async () => {
         </div>
       )}
 
-      {/* Confirm Dialog */}
+      {/* Confirm Revoke Dialog */}
       {confirmDialog?.open && (
         <ConfirmDialog
           isOpen={confirmDialog.open}
@@ -299,6 +331,20 @@ const confirmRevoke = async () => {
           variant="danger"
           onConfirm={confirmRevoke}
           onCancel={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {/* Confirm Delete Dialog */}
+      {deleteDialog?.open && (
+        <ConfirmDialog
+          isOpen={deleteDialog.open}
+          title="Hapus riwayat secret?"
+          message="Riwayat secret ini akan dihapus permanen dari dashboard. Tindakan ini tidak bisa dibatalkan."
+          confirmLabel="Ya, hapus riwayat"
+          cancelLabel="Batal"
+          variant="danger"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteDialog(null)}
         />
       )}
 

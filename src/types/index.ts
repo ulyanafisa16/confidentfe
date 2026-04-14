@@ -128,6 +128,7 @@ export interface CreateSecretPayload {
   max_views: number
   expires_in_hours: number
   email_whitelist: string[]
+  domain_whitelist: string[] 
   access_password?: string
   notify_on_open: boolean
   allow_preview: boolean

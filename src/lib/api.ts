@@ -122,4 +122,8 @@ export const revealSecret = async (
   return data.data ?? data
 }
 
+export const deleteSecret = async (secretId: string): Promise<void> => {
+  await api.delete(`/secrets/${secretId}/delete/`)
+}
+
 export default api

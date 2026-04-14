@@ -63,6 +63,7 @@ export default function CreateForm() {
   const [dragOver, setDragOver] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [anonQuota, setAnonQuota] = useState(3)
+  const [domains, setDomains] = useState<string[]>([])
   
   const handleSubmit = async () => {
     if (tab === 'text' && !content.trim()) { setError('Secret tidak boleh kosong'); return }
@@ -118,6 +119,7 @@ export default function CreateForm() {
         max_views: maxViews,
         expires_in_hours: expiresInHours,
         email_whitelist: emails,
+        domain_whitelist: domains,
         notify_on_open: notifyOnOpen,
         allow_preview: allowPreview,
         ...(accessPassword ? { access_password: accessPassword } : {}),
@@ -174,6 +176,7 @@ const handleCopy = () => {
     setResult(null)
     setContent('')
     setEmails([])
+    setDomains([])
     setEncryptionPassword('')
     setAccessPassword('')
     setPassword('')
@@ -356,11 +359,11 @@ const handleCopy = () => {
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
           Email whitelist <span className="normal-case font-normal">(optional)</span>
         </label>
-        <EmailWhitelist 
-          emails={emails} 
-          onChange={(newEmails) => {
-            setEmails(newEmails)
-          }} 
+        <EmailWhitelist
+          emails={emails}
+          domains={domains}
+          onEmailsChange={setEmails}
+          onDomainsChange={setDomains}
         />
       </div>
 
