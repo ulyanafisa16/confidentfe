@@ -69,13 +69,13 @@ export default function Navbar() {
         {/* Nav links */}
         <div className="hidden sm:flex items-center gap-6">
           <Link
-            href="/#how-it-works"
+            href="/how-it-works"
             className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             How it works
           </Link>
           <Link
-            href="/#security"
+            href="/security"
             className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             Security

@@ -27,17 +27,11 @@ export default function Footer() {
             >
               Create secret
             </Link>
-            <Link
-              href="/login"
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              Login
+            <Link href="/how-it-works" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+              How it works
             </Link>
-            <Link
-              href="/register"
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              Register
+            <Link href="/security" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+              Security
             </Link>
           </div>
 
