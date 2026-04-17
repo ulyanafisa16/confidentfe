@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 
 import type { Metadata } from 'next'
+import { ThemeProvider } from 'next-themes'
 import { DM_Sans, DM_Serif_Display } from 'next/font/google'
 import './globals.css'
 import Navbar from '../components/ui/Navbar'
@@ -23,14 +24,15 @@ export const metadata: Metadata = {
   description: 'Send passwords, API keys, or confidential notes through a secure link.',
 }
 
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${dmSerif.variable}`} suppressHydrationWarning>
       <body className="font-sans">
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   )

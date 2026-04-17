@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --brand: #1a6b5e;
   --brand-light: #e1f5ee;

@@ -48,7 +48,7 @@ export default function HomePage() {
       </div>
 
       {/* FORM */}
-      <div className="max-w-xl mx-auto mb-16">
+      <div className="max-w-2xl mx-auto mb-16">  {/* ← dari max-w-xl jadi max-w-2xl */}
         <CreateForm />
       </div>
 
