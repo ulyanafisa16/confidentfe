@@ -75,14 +75,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
-    if (!token) { router.push('/login'); return }
+    if (!token) { router.replace('/login'); return }
     const fetchAll = async () => {
       try {
         const [prof, secsRaw] = await Promise.all([getProfile(), getMySecrets()])
         setProfile(prof)
         setSecrets(Array.isArray(secsRaw) ? secsRaw : [])
       } catch {
-        router.push('/login')
+        router.replace('/login')
       } finally {
         setLoading(false)
       }

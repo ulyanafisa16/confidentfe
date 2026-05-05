@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import ThemeToggle from '../ui/ThemeToggle'
 import { useEffect, useState, useCallback } from 'react'
 import { LogIn, LogOut, LayoutDashboard, User, Menu, X } from 'lucide-react'
@@ -40,24 +41,25 @@ export default function Navbar() {
     setMobileOpen(false)
   }, [pathname, fetchProfile])
 
-  const handleLogout = () => {
-    logout()
-    setProfile(null)
-    setMobileOpen(false)
-    router.push('/')
-    router.refresh()
-  }
+  const handleLogout = async () => {
+  await logout()
+  setProfile(null)
+  setMobileOpen(false)
+  router.replace('/')
+}
 
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : profile?.email?.[0]?.toUpperCase() || '?'
 
   const navLinks = [
+    { href: '/', label: 'Home' },
     { href: '/how-it-works', label: 'How it works' },
     { href: '/security', label: 'Security' },
   ]
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => 
+  href === '/' ? pathname === '/' : pathname === href
 
   return (
     <>
@@ -66,10 +68,17 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-[#1a6b5e] group-hover:scale-125 transition-transform" />
-            <span className="font-semibold text-gray-900 dark:text-white tracking-tight">
-              SecretDrop
+            <Image
+              src="/logob.svg"
+              alt="OneTimeUnlock Logo"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+            <span className="text-[15px] font-semibold text-gray-800 dark:text-white tracking-tight">
+              OneTimeUnlock
             </span>
+           
           </Link>
 
           {/* Desktop nav links */}
@@ -108,7 +117,7 @@ export default function Navbar() {
                         <span className="text-xs font-semibold text-[#0f6e56]">{initials}</span>
                       </div>
                       <span className="text-sm text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
-                        {profile.full_name || profile.email}
+                        {profile.full_name}
                       </span>
                     </div>
                   </Link>
@@ -131,22 +140,16 @@ export default function Navbar() {
             )}
           </div>
 
-           <div className="flex items-center gap-1">
+          {/* Right side: ThemeToggle + Mobile hamburger */}
+          <div className="flex items-center gap-1">
             <ThemeToggle />
-            {/* hamburger button */}
-            <button className="sm:hidden ...">
-              ...
+            <button
+              className="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
-
-
-          {/* Mobile hamburger */}
-          <button
-            className="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
 
         </div>
 

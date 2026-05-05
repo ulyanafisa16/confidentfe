@@ -107,7 +107,7 @@ function AnimatedStep({ step, index }: { step: typeof STEPS[0]; index: number })
         transform: inView ? 'translateY(0)' : 'translateY(24px)',
         transition: `opacity 0.5s ease ${index * 80}ms, transform 0.5s ease ${index * 80}ms`,
       }}
-      className="group flex gap-5 p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl hover:border-[#1d9e75]/40 hover:shadow-sm transition-all duration-300"
+      className="group flex gap-5 p-5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-800 rounded-2xl hover:border-[#1d9e75]/40 hover:shadow-sm transition-all duration-300"
     >
       <div className="flex-shrink-0">
         <div className="w-11 h-11 rounded-xl bg-[#e1f5ee] dark:bg-[#0a2e24] flex items-center justify-center group-hover:bg-[#1d9e75] transition-colors duration-300">
@@ -195,11 +195,11 @@ export default function HowItWorksPage() {
       {/* Steps */}
       <div className="mb-20">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
             Step by step
           </span>
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
         </div>
         <div className="space-y-3">
           {STEPS.map((step, i) => (
@@ -211,11 +211,11 @@ export default function HowItWorksPage() {
       {/* Features */}
       <div className="mb-20">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
             Security features
           </span>
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map((f, i) => (

@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { UserPlus } from 'lucide-react'
@@ -31,7 +31,7 @@ export default function RegisterPage() {
       await register({ full_name: fullName, email, password, password_confirm: confirm })
       // Auto login setelah register
       await login({ email, password })
-      window.location.href = '/'
+      router.replace('/')
       } catch (e: any) {
       const data = e?.response?.data
       if (data?.errors?.email) setError('Email sudah terdaftar.')
@@ -41,6 +41,13 @@ export default function RegisterPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      router.replace('/')
+    }
+  }, [router])
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6 py-12">

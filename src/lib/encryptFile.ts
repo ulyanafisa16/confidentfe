@@ -5,9 +5,9 @@ function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   let binary = ''
   bytes.forEach((b) => (binary += String.fromCharCode(b)))
   return btoa(binary)
-    .replace(/\+/g, '-')   // ← URL-safe
-    .replace(/\//g, '_')   // ← URL-safe
-    .replace(/=/g, '')     // ← hapus padding
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
 }
 
 export interface EncryptedFile {
@@ -15,7 +15,8 @@ export interface EncryptedFile {
   encryption_iv: string
   encryption_tag: string
   encryption_salt: string
-  raw_key_b64: string
+  raw_key_b64: string | null
+  mode: 'url-key' | 'passphrase'
   original_filename: string
   mime_type: string
   file_size_bytes: number
@@ -23,29 +24,33 @@ export interface EncryptedFile {
 
 export async function encryptFile(
   file: File,
-  password?: string
+  passphrase?: string
 ): Promise<EncryptedFile> {
+  const encoder = new TextEncoder()
   const ivBytes = crypto.getRandomValues(new Uint8Array(12))
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
 
   let key: CryptoKey
+  let mode: 'url-key' | 'passphrase'
 
-  if (password) {
+  if (passphrase && passphrase.trim()) {
+    mode = 'passphrase'
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(password),
+      encoder.encode(passphrase.trim()),
       { name: 'PBKDF2' },
       false,
       ['deriveKey']
     )
     key = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: saltBytes, iterations: 100000, hash: 'SHA-256' },
+      { name: 'PBKDF2', salt: saltBytes, iterations: 310000, hash: 'SHA-256' },
       keyMaterial,
       { name: 'AES-GCM', length: 256 },
-      true,
+      false,
       ['encrypt']
     )
   } else {
+    mode = 'url-key'
     key = await crypto.subtle.generateKey(
       { name: 'AES-GCM', length: 256 },
       true,
@@ -53,7 +58,6 @@ export async function encryptFile(
     )
   }
 
-  // Baca file sebagai ArrayBuffer
   const fileBuffer = await file.arrayBuffer()
 
   const cipherBuffer = await crypto.subtle.encrypt(
@@ -66,14 +70,20 @@ export async function encryptFile(
   const tagOffset = cipherBytes.length - 16
   const ciphertextBytes = cipherBytes.slice(0, tagOffset)
   const tagBytes = cipherBytes.slice(tagOffset)
-  const rawKey = await crypto.subtle.exportKey('raw', key)
+
+  let raw_key_b64: string | null = null
+  if (mode === 'url-key') {
+    const rawKey = await crypto.subtle.exportKey('raw', key)
+    raw_key_b64 = bufferToBase64(rawKey)
+  }
 
   return {
     encrypted_payload: bufferToBase64(ciphertextBytes),
     encryption_iv: bufferToBase64(ivBytes),
     encryption_tag: bufferToBase64(tagBytes),
     encryption_salt: bufferToBase64(saltBytes),
-    raw_key_b64: bufferToBase64(rawKey),
+    raw_key_b64,
+    mode,
     original_filename: file.name,
     mime_type: file.type || 'application/octet-stream',
     file_size_bytes: file.size,

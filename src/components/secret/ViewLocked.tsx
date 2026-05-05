@@ -29,19 +29,28 @@ export default function ViewLocked({ meta, onReveal, loading, error }: Props) {
   const [email, setEmail] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [hasKey, setHasKey] = useState(false)
+  const [encPassphrase, setEncPassphrase] = useState('')
+  const [mode, setMode] = useState<'url-key' | 'passphrase'>('url-key')
 
 useEffect(() => {
   const hash = window.location.hash
   const hashContent = hash.startsWith('#') ? hash.slice(1) : hash
   const params = new URLSearchParams(hashContent)
-  setHasKey(!!params.get('key'))
+  const hasKey = !!params.get('key')
+  setHasKey(hasKey)
+  setMode(hasKey ? 'url-key' : 'passphrase')
 }, [])
 
   const handleSubmit = () => {
     if (!confirmed) return
+    if (mode === 'passphrase' && !encPassphrase.trim()) {
+    // Tampilkan error
+      return
+    }
     onReveal(
       meta.is_password_protected ? password : undefined,
-      meta.is_email_restricted ? email : undefined
+      meta.is_email_restricted ? email : undefined,
+      mode === 'passphrase' ? encPassphrase : undefined,
     )
   }
 
@@ -93,7 +102,7 @@ useEffect(() => {
       </div>
 
       {/* No key warning */}
-      {!hasKey && (
+      {mode === 'url-key' && !hasKey && (
         <div className="flex gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/40 mb-6">
           <ShieldAlert size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-red-600 dark:text-red-400 leading-relaxed">
@@ -104,6 +113,20 @@ useEffect(() => {
 
       {/* Form */}
       <div className="space-y-3 mb-5">
+
+        {mode === 'passphrase' && (
+          <div className="mb-4">
+            <Input
+              label="Decryption passphrase"
+              type="password"
+              value={encPassphrase}
+              onChange={(e) => setEncPassphrase(e.target.value)}
+              placeholder="Enter the passphrase from the sender"
+              hint="The sender should have shared this with you separately"
+            />
+          </div>
+        )}
+
         {meta.is_email_restricted && (
           <Input
             label="Your email address"
@@ -147,7 +170,10 @@ useEffect(() => {
         variant="primary"
         size="lg"
         className="w-full"
-        disabled={!confirmed || !hasKey}
+        disabled={
+          !confirmed ||
+          (mode === 'url-key' && !hasKey)
+        }
         loading={loading}
         onClick={handleSubmit}
       >

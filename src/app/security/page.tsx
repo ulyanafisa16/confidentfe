@@ -145,18 +145,18 @@ export default function SecurityPage() {
         </h1>
         <p className="text-gray-500 dark:text-gray-400 text-lg max-w-lg mx-auto leading-relaxed">
           We believe security without transparency is theater.
-          Here is exactly how SecretDrop works and where its limits are.
+          Here is exactly how OneTimeUnlock works and where its limits are.
         </p>
       </div>
 
       {/* Security cards */}
       <div className="space-y-4 mb-16">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
             Security model
           </span>
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
         </div>
         {SECURITY_ITEMS.map((item, i) => (
           <SecurityCard key={item.title} item={item} index={i} />
@@ -166,11 +166,11 @@ export default function SecurityPage() {
       {/* Do's and Don'ts */}
       <div className="mb-16">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
             Best practices
           </span>
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-800" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">

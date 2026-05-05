@@ -8,13 +8,11 @@ import Link from 'next/link'
 
 interface Props {
   data: RevealSecretResponse
+  encPassphrase?: string
 }
 
 function base64ToBuffer(b64: string): Uint8Array {
-  // Normalize: URL-safe → standard, fix padding
-  const standard = b64
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
+  const standard = b64.replace(/-/g, '+').replace(/_/g, '/')
   const padded = standard + '='.repeat((4 - standard.length % 4) % 4)
   const binary = atob(padded)
   const bytes = new Uint8Array(binary.length)
@@ -22,25 +20,47 @@ function base64ToBuffer(b64: string): Uint8Array {
   return bytes
 }
 
-async function decryptContent(data: RevealSecretResponse): Promise<{
-  text?: string
-  blob?: Blob
-  filename?: string
-}> {
-  const hash = window.location.hash
-  const hashContent = hash.startsWith('#') ? hash.slice(1) : hash
-  const params = new URLSearchParams(hashContent)
-  const keyParam = params.get('key')
-  if (!keyParam) throw new Error('Decryption key not found in URL')
-
-  const rawKey = base64ToBuffer(keyParam)
+async function decryptContent(
+  data: RevealSecretResponse,
+  encPassphrase?: string
+): Promise<string | ArrayBuffer> {
   const iv = base64ToBuffer(data.encryption_iv)
   const tag = base64ToBuffer(data.encryption_tag)
+  const salt = base64ToBuffer(data.encryption_salt)
   const ciphertext = base64ToBuffer(data.encrypted_payload)
 
-  const key = await crypto.subtle.importKey(
-    'raw', rawKey, { name: 'AES-GCM' }, false, ['decrypt']
-  )
+  let key: CryptoKey
+
+  if (encPassphrase && encPassphrase.trim()) {
+    // Model B — derive key dari passphrase
+    const encoder = new TextEncoder()
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(encPassphrase.trim()),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    )
+    key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt']
+    )
+  } else {
+    // Model A — ambil key dari URL fragment
+    const hash = window.location.hash
+    const hashContent = hash.startsWith('#') ? hash.slice(1) : hash
+    const params = new URLSearchParams(hashContent)
+    const keyParam = params.get('key')
+    if (!keyParam) throw new Error('Decryption key not found in URL')
+
+    const rawKey = base64ToBuffer(keyParam)
+    key = await crypto.subtle.importKey(
+      'raw', rawKey, { name: 'AES-GCM' }, false, ['decrypt']
+    )
+  }
 
   const combined = new Uint8Array(ciphertext.length + tag.length)
   combined.set(ciphertext)
@@ -50,15 +70,10 @@ async function decryptContent(data: RevealSecretResponse): Promise<{
     { name: 'AES-GCM', iv }, key, combined
   )
 
-  if (data.secret_type === 'file') {
-    const blob = new Blob([decrypted], { type: data.mime_type || 'application/octet-stream' })
-    return { blob, filename: data.original_filename || 'secret-file' }
-  }
-
-  return { text: new TextDecoder().decode(decrypted) }
+  return decrypted
 }
 
-export default function ViewRevealed({ data }: Props) {
+export default function ViewRevealed({ data, encPassphrase}: Props) {
   const [plaintext, setPlaintext] = useState<string | null>(null)
   const [fileBlob, setFileBlob] = useState<Blob | null>(null)
   const [filename, setFilename] = useState<string>('')
@@ -66,13 +81,24 @@ export default function ViewRevealed({ data }: Props) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-  decryptContent(data)
-    .then((result) => {
-      if (result.text !== undefined) setPlaintext(result.text)
-      if (result.blob) { setFileBlob(result.blob); setFilename(result.filename || 'file') }
-    })
-    .catch((e) => setDecryptError(e?.message || 'Decryption failed'))
-}, [data])
+    decryptContent(data, encPassphrase)
+      .then((result) => {
+        if (data.secret_type === 'file') {
+          const blob = new Blob([result], { type: data.mime_type || 'application/octet-stream' })
+          setFileBlob(blob)
+          setFilename(data.original_filename || 'secret-file')
+        } else {
+          setPlaintext(new TextDecoder().decode(result as ArrayBuffer))
+        }
+      })
+      .catch((e) => {
+        if (encPassphrase) {
+          setDecryptError('Wrong passphrase. The content cannot be decrypted.')
+        } else {
+          setDecryptError(e?.message || 'Decryption failed.')
+        }
+      })
+  }, [data, encPassphrase])
 
   const handleCopy = () => {
     if (!plaintext) return

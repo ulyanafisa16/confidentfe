@@ -125,6 +125,7 @@ export interface CreateSecretPayload {
   encryption_iv: string
   encryption_tag: string
   encryption_salt: string
+  encryption_mode: 'url-key' | 'passphrase' 
   max_views: number
   expires_in_hours: number
   email_whitelist: string[]

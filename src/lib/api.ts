@@ -77,9 +77,21 @@ export const login = async (payload: LoginPayload): Promise<LoginResponse> => {
   return data
 }
 
-export const logout = () => {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('refresh_token')
+export const logout = async (): Promise<void> => {
+  try {
+    const refresh = localStorage.getItem('refresh_token')
+    await api.post('/auth/logout/', {
+      refresh_token: refresh
+    })
+  } catch {
+    // Tetap lanjut clear local meski request gagal
+  } finally {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('sd_anon')
+    localStorage.removeItem('sv_quota_cache')
+    sessionStorage.clear()
+  }
 }
 
 export const getProfile = async (): Promise<UserProfile> => {
@@ -125,5 +137,55 @@ export const revealSecret = async (
 export const deleteSecret = async (secretId: string): Promise<void> => {
   await api.delete(`/secrets/${secretId}/delete/`)
 }
+
+export interface QuotaStatus {
+  user_type: 'anonymous' | 'registered'
+  max_per_day: number | null
+  used_today: number
+  remaining: number | null
+  resets_at: string | null
+  max_file_size_mb: number
+  max_recipients: number
+  max_expiry_days: number
+}
+
+const QUOTA_CACHE_KEY = 'sv_quota_cache'
+const QUOTA_CACHE_TTL = 60 * 1000  // 5 menit
+ 
+export async function fetchQuotaStatus(
+  fingerprintHash?: string
+): Promise<QuotaStatus | null> {
+  // Selalu fresh, hapus cache dulu
+  try { localStorage.removeItem(QUOTA_CACHE_KEY) } catch {}
+
+  try {
+    const headers: Record<string, string> = {}
+    const token = localStorage.getItem('access_token')
+    if (!token && fingerprintHash) {
+      headers['X-Fingerprint-Hash'] = fingerprintHash
+    }
+
+    const { data } = await api.get('/config/quota-status/', { headers })
+    
+    // Response langsung tanpa wrapper data.data
+    const quota: QuotaStatus = data.data ?? data
+    
+    // Simpan ke cache
+    localStorage.setItem(QUOTA_CACHE_KEY, JSON.stringify({
+      data: quota,
+      ts: Date.now()
+    }))
+
+    return quota
+  } catch {
+    return null
+  }
+}
+
+// Invalidate cache setelah berhasil buat secret
+export function invalidateQuotaCache() {
+  localStorage.removeItem(QUOTA_CACHE_KEY)
+}
+
 
 export default api

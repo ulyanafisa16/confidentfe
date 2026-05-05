@@ -19,15 +19,16 @@ interface Props {
 export default function SecretAccessPage({ token }: Props) {
   const [state, setState] = useState<PageState>('loading')
   const [meta, setMeta] = useState<SecretMetaResponse | null>(null)
-  const [revealed, setRevealed] = useState<RevealSecretResponse | null>(null)
-  const [revealError, setRevealError] = useState('')
+  const [revealed, setRevealed] = useState<(RevealSecretResponse & { encPassphrase?: string }) | null>(null)
   const [revealing, setRevealing] = useState(false)
+  const [revealError, setRevealError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMeta = async () => {
       try {
         const data = await getSecretInfo(token)
-        
+        console.log('Raw meta dari Django:', data)
+        console.log('requires_email:', data.requires_email)
         const meta: SecretMetaResponse = {
           token: data.token,
           expires_at: data.expires_at,
@@ -38,7 +39,6 @@ export default function SecretAccessPage({ token }: Props) {
           allow_preview: true,
           status: data.can_access ? 'active' : 'expired',
         }
-        
         setMeta(meta)
         if (!data.can_access) {
           setState('expired')
@@ -53,32 +53,38 @@ export default function SecretAccessPage({ token }: Props) {
     fetchMeta()
   }, [token])
 
-  const handleReveal = async (password?: string, email?: string) => {
-  setRevealing(true)
-  setRevealError('')
-  try {
-    const payload: RevealSecretPayload = {}
-    if (password) payload.access_password = password
-    if (email) payload.email = email
+  const handleReveal = async (
+    password?: string,
+    email?: string,
+    encPassphrase?: string  // ← tambah ini
+  ) => {
+    setRevealing(true)
+    setRevealError('')
+    try {
+      const payload: RevealSecretPayload = {}
+      if (password) payload.access_password = password
+      if (email) payload.email = email
 
-    const data = await revealSecret(token, payload)
-    setRevealed(data)
-    setState('revealed')
-  } catch (e: any) {
-    const errData = e?.response?.data
-    if (errData?.errors?.access_password) {
-      setRevealError(errData.errors.access_password[0])
-    } else {
-      setRevealError(errData?.message || 'Gagal membuka secret.')
+      const data = await revealSecret(token, payload)
+      setRevealed({ ...data, encPassphrase })  // ← pass passphrase ke ViewRevealed
+      setState('revealed')
+    } catch (e: any) {
+      const errData = e?.response?.data
+      if (errData?.errors?.access_password) {
+        setRevealError(errData.errors.access_password[0])
+      } else {
+        setRevealError(errData?.message || 'Failed to reveal secret.')
+      }
+    } finally {
+      setRevealing(false)
     }
-  } finally {
-    setRevealing(false)
   }
-}
 
   if (state === 'loading') return <ViewLoading />
   if (state === 'expired' || state === 'error') return <ViewExpired />
-  if (state === 'revealed' && revealed) return <ViewRevealed data={revealed} />
+  if (state === 'revealed' && revealed) {
+  return <ViewRevealed data={revealed} encPassphrase={revealed.encPassphrase} />
+  }
   if (state === 'locked' && meta) {
     return (
       <ViewLocked

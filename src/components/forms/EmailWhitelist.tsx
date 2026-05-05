@@ -110,7 +110,7 @@ export default function EmailWhitelist({ emails, domains, onEmailsChange, onDoma
       ) : (
         <>
           <p className="text-[10px] text-gray-400 mb-2">
-            Semua email dengan domain ini bisa akses. Contoh: <span className="font-medium text-gray-500">@companyabc.com</span>
+            Allow access for any email from this domain. Example: <span className="font-medium text-gray-500">@companyabc.com</span>
           </p>
           <div className="flex gap-2">
             <div className="flex-1 relative">
