@@ -34,8 +34,8 @@ export default function SecretAccessPage({ token }: Props) {
           expires_at: data.expires_at,
           max_views: 0,
           views_remaining: data.views_remaining,
-          is_password_protected: data.requires_password,
-          is_email_restricted: data.requires_email,
+          is_password_protected: data.requires_password ?? false,
+          is_email_restricted: data.requires_email ?? false,
           allow_preview: true,
           status: data.can_access ? 'active' : 'expired',
         }
@@ -91,7 +91,7 @@ export default function SecretAccessPage({ token }: Props) {
         meta={meta}
         onReveal={handleReveal}
         loading={revealing}
-        error={revealError}
+        error={revealError ?? ''}
       />
     )
   }

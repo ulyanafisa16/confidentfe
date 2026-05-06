@@ -8,7 +8,11 @@ import Input from '../../components/ui/Input'
 
 interface Props {
   meta: SecretMetaResponse
-  onReveal: (password?: string, email?: string) => void
+  onReveal: (
+    password?: string,
+    email?: string,
+    encPassphrase?: string
+  ) => void
   loading: boolean
   error: string
 }

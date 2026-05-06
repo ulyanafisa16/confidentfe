@@ -116,9 +116,7 @@ export default function Navbar() {
                       <div className="w-7 h-7 rounded-full bg-[#e1f5ee] dark:bg-[#0f3d30] flex items-center justify-center">
                         <span className="text-xs font-semibold text-[#0f6e56]">{initials}</span>
                       </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
-                        {profile.full_name}
-                      </span>
+                      
                     </div>
                   </Link>
                   <Button variant="ghost" size="sm" onClick={handleLogout} title="Logout">

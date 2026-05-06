@@ -133,6 +133,8 @@ export interface CreateSecretPayload {
   access_password?: string
   notify_on_open: boolean
   allow_preview: boolean
+  client_risk_score?: number           // ← tambah
+  client_rules_triggered?: string[] 
   // File only
   original_filename?: string
   mime_type?: string
@@ -151,4 +153,28 @@ export interface RevealSecretResponse {
   original_filename?: string
   mime_type?: string
   file_size_bytes?: number
+}
+
+export interface ClientRuleResult {
+  rule_name:   string
+  triggered:   boolean
+  score_delta: number
+  severity:    'low' | 'medium' | 'high' | 'critical'
+  detail:      string
+}
+ 
+export interface ClientDetectionResult {
+  risk_score:       number          // 0–100, total accumulated score
+  action:           'allowed' | 'flagged' | 'blocked'
+  rules_triggered:  string[]        // list nama rule yang trigger
+  rule_details:     ClientRuleResult[]
+  scanned_at:       string
+}
+ 
+export interface ContentToScan {
+  text?:          string       // isi teks / password / note
+  filename?:      string       // nama file original
+  mime_type?:     string       // MIME type file
+  file_size?:     number       // ukuran file dalam bytes
+  secret_type:    string       // 'text' | 'password' | 'file' | 'note'
 }

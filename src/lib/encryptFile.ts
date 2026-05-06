@@ -26,6 +26,7 @@ export async function encryptFile(
   file: File,
   passphrase?: string
 ): Promise<EncryptedFile> {
+  console.log("ENCRYPT FILE CALLED") 
   const encoder = new TextEncoder()
   const ivBytes = crypto.getRandomValues(new Uint8Array(12))
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))

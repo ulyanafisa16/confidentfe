@@ -24,16 +24,18 @@ async function decryptContent(
   data: RevealSecretResponse,
   encPassphrase?: string
 ): Promise<string | ArrayBuffer> {
-  const iv = base64ToBuffer(data.encryption_iv)
-  const tag = base64ToBuffer(data.encryption_tag)
-  const salt = base64ToBuffer(data.encryption_salt)
-  const ciphertext = base64ToBuffer(data.encrypted_payload)
+
+  // 🔥 Normalize semua buffer
+  const iv = new Uint8Array(base64ToBuffer(data.encryption_iv))
+  const tag = new Uint8Array(base64ToBuffer(data.encryption_tag))
+  const salt = new Uint8Array(base64ToBuffer(data.encryption_salt))
+  const ciphertext = new Uint8Array(base64ToBuffer(data.encrypted_payload))
 
   let key: CryptoKey
 
   if (encPassphrase && encPassphrase.trim()) {
-    // Model B — derive key dari passphrase
     const encoder = new TextEncoder()
+
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
       encoder.encode(encPassphrase.trim()),
@@ -41,24 +43,36 @@ async function decryptContent(
       false,
       ['deriveKey']
     )
+
     key = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' },
+      {
+        name: 'PBKDF2',
+        salt, // ✅ sekarang sudah safe
+        iterations: 310000,
+        hash: 'SHA-256'
+      },
       keyMaterial,
       { name: 'AES-GCM', length: 256 },
       false,
       ['decrypt']
     )
+
   } else {
-    // Model A — ambil key dari URL fragment
     const hash = window.location.hash
     const hashContent = hash.startsWith('#') ? hash.slice(1) : hash
     const params = new URLSearchParams(hashContent)
     const keyParam = params.get('key')
+
     if (!keyParam) throw new Error('Decryption key not found in URL')
 
-    const rawKey = base64ToBuffer(keyParam)
+    const rawKey = new Uint8Array(base64ToBuffer(keyParam))
+
     key = await crypto.subtle.importKey(
-      'raw', rawKey, { name: 'AES-GCM' }, false, ['decrypt']
+      'raw',
+      rawKey,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
     )
   }
 
@@ -67,7 +81,9 @@ async function decryptContent(
   combined.set(tag, ciphertext.length)
 
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv }, key, combined
+    { name: 'AES-GCM', iv },
+    key,
+    combined
   )
 
   return decrypted

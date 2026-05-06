@@ -9,6 +9,8 @@ import EmailWhitelist from '../../components/forms/EmailWhitelist'
 import { createSecret, fetchQuotaStatus, invalidateQuotaCache } from '../../lib/api'
 import type { CreateSecretPayload, CreateSecretResponse, QuotaStatus } from '../../types'
 import { getFingerprint, incrementAnonCount } from '../../lib/fingerprint'
+import { runClientDetection } from '../../lib/clientDetection'
+import type { ContentToScan } from '../../types'
 
 type Tab = 'text' | 'file'
 
@@ -96,11 +98,8 @@ export default function CreateForm() {
     setEncPassphrase('')
     setEncryptionMode('url-key')
   }
-
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-     console.log("EMAIL STATE SAAT SUBMIT:", emails)
-    console.log('=== SUBMIT ===', { emails, domains, tab, content: content.substring(0, 20) })
 
     if (tab === 'text' && !content.trim()) { setError('Secret cannot be empty'); return }
     if (tab === 'file' && !selectedFile) { setError('Please select a file'); return }
@@ -111,12 +110,40 @@ export default function CreateForm() {
 
     setError('')
     setLoading(true)
+    
 
     try {
       // Step 1 — Fingerprint
       let fingerprintHash: string | undefined
       if (!isLoggedIn) {
         fingerprintHash = await getFingerprint()
+      }
+      
+      let clientRiskScore = 0
+      let clientRulesTriggered: string[] = []
+
+      const contentToScan: ContentToScan = {
+        secret_type: tab,
+        text: tab === 'text' ? content : undefined,
+        filename: tab === 'file' ? selectedFile?.name : undefined,
+        mime_type: tab === 'file' ? selectedFile?.type : undefined,
+        file_size: tab === 'file' ? selectedFile?.size : undefined,
+      }
+      const detectionResult = runClientDetection(contentToScan)
+
+      clientRiskScore = detectionResult.risk_score
+      clientRulesTriggered = detectionResult.rules_triggered
+
+      if (detectionResult.action === 'blocked') {
+        setError(
+          'Content blocked by security scan. This content appears to contain sensitive data that cannot be shared.'
+        )
+        setLoading(false)
+        return
+      }
+
+      if (detectionResult.action === 'flagged') {
+        
       }
 
       // Step 2 — Encrypt
@@ -154,7 +181,6 @@ export default function CreateForm() {
       } else {
         setEncryptedKey('')
       }
-
       // Step 3 — Build payload
       const payload: CreateSecretPayload = {
         secret_type: tab,
@@ -169,13 +195,11 @@ export default function CreateForm() {
         domain_whitelist: domains,
         notify_on_open: notifyOnOpen,
         allow_preview: allowPreview,
+        client_risk_score: clientRiskScore,           // ← tambah
+        client_rules_triggered: clientRulesTriggered, 
         ...(fingerprintHash ? { fingerprint_hash: fingerprintHash } : {}),
         ...extraFields,
       }
-      console.log("PAYLOAD KIRIM KE DJANGO:", payload)
-      console.log('Payload email_whitelist:', payload.email_whitelist)
-      console.log('Payload domain_whitelist:', payload.domain_whitelist)
-
       const res = await createSecret(payload)
       setResult(res)
 
@@ -372,11 +396,9 @@ export default function CreateForm() {
           emails={emails}
           domains={domains}
           onEmailsChange={(newEmails) => {
-            console.log('setEmails called:', newEmails)
             setEmails(newEmails)
           }}
           onDomainsChange={(newDomains) => {
-            console.log('setDomains called:', newDomains)
             setDomains(newDomains)
           }}
         />
