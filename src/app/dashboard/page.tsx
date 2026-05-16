@@ -72,6 +72,7 @@ export default function DashboardPage() {
     open: boolean
     secretId: string
   } | null>(null)
+  const [errorDialog, setErrorDialog] = useState<string | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -130,7 +131,8 @@ export default function DashboardPage() {
       await deleteSecret(id)
       setSecrets((prev) => prev.filter((s) => s.id !== id))
     } catch (e: any) {
-      alert(e?.response?.data?.message || 'Gagal menghapus riwayat.')
+      const msg = e?.response?.data?.message || 'Gagal menghapus riwayat.'
+      setErrorDialog(msg)
     }
   }
 
@@ -246,13 +248,6 @@ export default function DashboardPage() {
                     {secret.status === 'active' && activeLink && (
                       <>
                         <button
-                          onClick={() => handleCopyLink(secret)}
-                          title="Copy link"
-                          className="p-2 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-                        >
-                          {copiedId === secret.id ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                        <button
                           onClick={() => handleRevoke(secret.id)}
                           disabled={revoking === secret.id}
                           title="Revoke secret"
@@ -345,6 +340,19 @@ export default function DashboardPage() {
           variant="danger"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteDialog(null)}
+        />
+      )}
+
+      {errorDialog && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Tidak bisa dihapus"
+          message={errorDialog}
+          confirmLabel="OK"
+          cancelLabel={undefined}
+          variant="warning"
+          onConfirm={() => setErrorDialog(null)}
+          onCancel={() => setErrorDialog(null)}
         />
       )}
 

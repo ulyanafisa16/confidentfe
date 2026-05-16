@@ -93,6 +93,8 @@ export interface MySecretLink {
 // ── Secret Access (halaman penerima) ──────────────────
 export interface SecretMetaResponse {
   token: string
+  encryption_salt?: string
+  requires_passphrase?: boolean
   expires_at: string | null
   max_views: number
   views_remaining: number
@@ -177,4 +179,15 @@ export interface ContentToScan {
   mime_type?:     string       // MIME type file
   file_size?:     number       // ukuran file dalam bytes
   secret_type:    string       // 'text' | 'password' | 'file' | 'note'
+}
+
+export interface QuotaStatus {
+  user_type: 'anonymous' | 'registered'
+  max_per_day: number | null
+  used_today: number
+  remaining: number | null
+  resets_at: string | null
+  max_file_size_mb: number
+  max_recipients: number
+  max_expiry_days: number
 }

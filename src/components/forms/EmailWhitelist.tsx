@@ -67,14 +67,14 @@ export default function EmailWhitelist({ emails, domains, onEmailsChange, onDoma
               : 'text-gray-500'
           }`}
         >
-          <AtSign size={11} /> Domain perusahaan
+          <AtSign size={11} /> Company Domain
         </button>
       </div>
 
       {mode === 'email' ? (
         <>
           <p className="text-[10px] text-gray-400 mb-2">
-            Ketik email lalu klik <span className="font-medium text-gray-500">+ Add</span> atau tekan <span className="font-medium text-gray-500">Enter</span>
+            Type an email, then click <span className="font-medium text-gray-500">+ Add</span> atau tekan <span className="font-medium text-gray-500">Enter</span>
           </p>
           <div className="flex gap-2">
             <input

@@ -234,7 +234,7 @@ export default function ViewRevealed({ data, encPassphrase}: Props) {
       <p className="text-xs text-gray-400 text-center">
         Need to send a secret?{' '}
         <Link href="/" className="text-[#0f6e56] hover:underline">
-          Create one at SecretDrop →
+          Create one at OneTimeUnlock →
         </Link>
       </p>
 

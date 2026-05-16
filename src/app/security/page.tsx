@@ -37,7 +37,7 @@ const SECURITY_ITEMS = [
   {
     icon: AlertTriangle,
     title: 'What we cannot protect against',
-    content: "No system protects against a recipient taking a screenshot, a keylogger on the recipient's device, or the recipient choosing to share the content. SecretDrop controls transit and storage security — not what happens after decryption on the recipient's screen.",
+    content: "No system protects against a recipient taking a screenshot, a keylogger on the recipient's device, or the recipient choosing to share the content. OneTimeUnlock controls transit and storage security — not what happens after decryption on the recipient's screen.",
     color: 'amber',
   },
 ]
@@ -176,7 +176,7 @@ export default function SecurityPage() {
           <div className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <CheckCircle size={15} className="text-[#0f6e56]" />
-              Use SecretDrop for
+              Use OneTimeUnlock for
             </h3>
             <ul className="space-y-2.5">
               {DO_LIST.map((item) => (
@@ -190,7 +190,7 @@ export default function SecurityPage() {
           <div className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <X size={15} className="text-red-400" />
-              Don't use SecretDrop for
+              Don't use OneTimeUnlock for
             </h3>
             <ul className="space-y-2.5">
               {DONT_LIST.map((item) => (
@@ -211,7 +211,7 @@ export default function SecurityPage() {
           See the full picture
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Want to understand the step-by-step flow? Read how SecretDrop works in detail.
+          Want to understand the step-by-step flow? Read how OneTimeUnlock works in detail.
         </p>
         <Link
           href="/how-it-works"

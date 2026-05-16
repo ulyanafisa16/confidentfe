@@ -22,12 +22,16 @@ const VIEW_OPTIONS = [
 ]
 
 const EXPIRE_OPTIONS = [
+  { label: '1 minute', value: 0.0167 },
   { label: '5 minutes', value: 0.0833 },
   { label: '1 hour', value: 1 },
   { label: '24 hours', value: 24 },
   { label: '7 days', value: 168 },
-  { label: '30 days', value: 720 },
 ]
+
+
+const BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1', 
+  '.vbs', '.msi', '.dmg', '.app', '.jar', '.dll', '.so']
 
 export default function CreateForm() {
   const [tab, setTab] = useState<Tab>('text')
@@ -51,10 +55,28 @@ export default function CreateForm() {
   const [usePassphrase, setUsePassphrase] = useState(false)
   const [encPassphrase, setEncPassphrase] = useState('')
   const [encryptionMode, setEncryptionMode] = useState<'url-key' | 'passphrase'>('url-key')
+  const [fileError, setFileError] = useState('')
+  const [customViews, setCustomViews] = useState(false)
 
   const anonQuota = quotaStatus?.remaining ?? 3
   const maxPerDay = quotaStatus?.max_per_day ?? 3
 
+  const maxFileSizeMB = quotaStatus?.max_file_size_mb ?? (isLoggedIn ? 50 : 10)
+  const maxRecipients = quotaStatus?.max_recipients ?? (isLoggedIn ? 50 : 5)
+  const maxExpiryDays = quotaStatus?.max_expiry_days ?? (isLoggedIn ? 30 : 3)
+  const maxExpiryHours = maxExpiryDays * 24
+
+
+  const dynamicExpireOption = {
+  label: `${maxExpiryDays} day${maxExpiryDays > 1 ? 's' : ''}`,
+  value: maxExpiryHours,
+}
+const availableExpireOptions = [
+  ...EXPIRE_OPTIONS.filter(o => o.value <= maxExpiryHours),
+  ...(maxExpiryDays > 1 && !EXPIRE_OPTIONS.some(o => o.value === maxExpiryHours)
+    ? [dynamicExpireOption]
+    : [])
+]
   // ── Init ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
@@ -93,24 +115,70 @@ export default function CreateForm() {
     setDomains([])
     setCopied(false)
     setSelectedFile(null)
+    setFileError('')
     setEncryptedKey('')
     setUsePassphrase(false)
     setEncPassphrase('')
     setEncryptionMode('url-key')
+    setCustomViews(false)
+  }
+
+  const handleFileSelect = (file: File) => {
+    setFileError('')
+
+    // Cek ekstensi
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (BLOCKED_EXTENSIONS.includes(ext)) {
+      setFileError(`File type "${ext}" is not allowed. Executable files cannot be uploaded.`)
+      return
+    }
+
+    // Cek ukuran
+    const maxMB = maxFileSizeMB
+    const maxBytes = maxMB * 1024 * 1024
+    if (file.size > maxBytes) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1)
+      setFileError(`File too large (${sizeMB} MB). Maximum allowed size is ${maxMB} MB${!isLoggedIn ? ' for anonymous users. Login for up to 100 MB.' : '.'}`)
+      return
+    }
+
+    setSelectedFile(file)
   }
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
 
-    if (tab === 'text' && !content.trim()) { setError('Secret cannot be empty'); return }
-    if (tab === 'file' && !selectedFile) { setError('Please select a file'); return }
+    if (tab === 'text' && !content.trim()) {
+      setError('Secret cannot be empty')
+      return
+    }
+
+    if (tab === 'file') {
+      if (!selectedFile) {
+        setError('Please select a file')
+        return
+      }
+
+      if (selectedFile.size <= 0) {
+        setError('File cannot be empty.')
+        return
+      }
+    }
     if (!isLoggedIn && quotaStatus !== null && (quotaStatus.remaining ?? 1) <= 0) {
       setError('Daily limit reached. Please login to create more secrets.')
       return
     }
+    if (expiresInHours > maxExpiryHours) {
+    setError(`Maximum expiry is ${maxExpiryDays} day${maxExpiryDays > 1 ? 's' : ''}.`)
+    return
+  }
+
+  if (emails.length + domains.length > maxRecipients) {
+    setError(`Maximum recipients allowed is ${maxRecipients}.`)
+    return
+  }
 
     setError('')
     setLoading(true)
-    
 
     try {
       // Step 1 — Fingerprint
@@ -175,12 +243,10 @@ export default function CreateForm() {
         encResult = await encryptSecret(content, passphraseToUse)
       }
 
+      const keyForLink = encResult.raw_key_b64 || ''
       setEncryptionMode(encResult.mode)
-      if (encResult.raw_key_b64) {
-        setEncryptedKey(encResult.raw_key_b64)
-      } else {
-        setEncryptedKey('')
-      }
+      setEncryptedKey(keyForLink)
+      
       // Step 3 — Build payload
       const payload: CreateSecretPayload = {
         secret_type: tab,
@@ -203,6 +269,14 @@ export default function CreateForm() {
       const res = await createSecret(payload)
       setResult(res)
 
+      const token = res.links[0]?.token
+
+      if (token && keyForLink && encResult.mode === 'url-key') {
+        localStorage.setItem(
+          `secret_link_${token}`,
+          `${window.location.origin}/s/${token}#key=${encodeURIComponent(keyForLink)}`
+        )
+      }
       // Step 4 — Refresh quota
       if (!isLoggedIn) {
         incrementAnonCount(fingerprintHash || '')
@@ -297,58 +371,85 @@ export default function CreateForm() {
 
       {/* CONTENT */}
       {tab === 'file' ? (
-        <div className="mb-5">
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">
-            Upload file
-          </label>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault()
-              setDragOver(false)
-              const file = e.dataTransfer.files[0]
-              if (file) setSelectedFile(file)
+      <div className="mb-5">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">
+          Upload file
+        </label>
+
+        {/* Max size info */}
+        <p className="text-xs text-gray-400 mb-2">
+          Max size: <span className="font-medium">{maxFileSizeMB} MB</span>
+          {' · '}PDF, Word, Excel, images, ZIP, TXT, CSV, XML
+          {' · '}Executable files not allowed (.exe, .bat, .sh, etc)
+        </p>
+
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+            const file = e.dataTransfer.files[0]
+            if (file) handleFileSelect(file)
+          }}
+          onClick={() => document.getElementById('file-input')?.click()}
+          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+            dragOver ? 'border-[#1d9e75] bg-[#e1f5ee]/30'
+            : selectedFile ? 'border-[#1d9e75] bg-[#e1f5ee]/10'
+            : fileError ? 'border-red-300 dark:border-red-700 bg-red-50/30'
+            : 'border-gray-200 dark:border-gray-700 hover:border-[#1d9e75] hover:bg-[#e1f5ee]/10'
+          }`}
+        >
+          <input
+            id="file-input"
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.xml,.jpg,.jpeg,.png,.gif,.webp,.zip,.dbml"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleFileSelect(file)
+              // Reset input supaya bisa pilih file yang sama lagi
+              e.target.value = ''
             }}
-            onClick={() => document.getElementById('file-input')?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              dragOver ? 'border-[#1d9e75] bg-[#e1f5ee]/30'
-              : selectedFile ? 'border-[#1d9e75] bg-[#e1f5ee]/10'
-              : 'border-gray-200 dark:border-gray-700 hover:border-[#1d9e75] hover:bg-[#e1f5ee]/10'
-            }`}
-          >
-            <input
-              id="file-input"
-              type="file"
-              className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) setSelectedFile(file) }}
-            />
-            {selectedFile ? (
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-[#e1f5ee] dark:bg-[#0f3d30] flex items-center justify-center mx-auto mb-3">
-                  <File size={18} className="text-[#0f6e56]" />
-                </div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{selectedFile.name}</p>
-                <p className="text-xs text-gray-400">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB · {selectedFile.type || 'unknown'}</p>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setSelectedFile(null) }}
-                  className="mt-3 text-xs text-red-400 hover:text-red-600 underline"
-                >
-                  Remove file
-                </button>
+          />
+          {selectedFile ? (
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-[#e1f5ee] dark:bg-[#0f3d30] flex items-center justify-center mx-auto mb-3">
+                <File size={18} className="text-[#0f6e56]" />
               </div>
-            ) : (
-              <div>
-                <File size={24} className="mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-500">
-                  <span className="text-[#0f6e56] font-medium">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-gray-400 mt-1">Any format — max 50MB</p>
-              </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{selectedFile.name}</p>
+              <p className="text-xs text-gray-400">
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB · {selectedFile.type || 'unknown type'}
+              </p>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setFileError('') }}
+                className="mt-3 text-xs text-red-400 hover:text-red-600 underline"
+              >
+                Remove file
+              </button>
+            </div>
+          ) : (
+            <div>
+              <File size={24} className="mx-auto mb-2 text-gray-400" />
+              <p className="text-sm text-gray-500">
+                <span className="text-[#0f6e56] font-medium">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Max {maxFileSizeMB} MB
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* File error */}
+        {fileError && (
+          <div className="mt-2 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <span className="text-red-500 text-xs mt-0.5">⚠</span>
+            <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>
+          </div>
+        )}
+      </div>
       ) : (
         <div className="mb-5">
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">
@@ -373,17 +474,90 @@ export default function CreateForm() {
 
       {/* OPTIONS GRID */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Allowed views</label>
-          <select value={maxViews} onChange={(e) => setMaxViews(Number(e.target.value))} className={selectClass}>
-            {VIEW_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+      <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
+        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          Allowed views
+        </label>
+        
+        {/* Preset options */}
+        <div className="flex gap-1 flex-wrap mb-2">
+          {[1, 3, 5, 10].map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => { setMaxViews(v); setCustomViews(false) }}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                maxViews === v && !customViews
+                  ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
+              }`}
+            >
+              {v}×
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setCustomViews(true)}
+            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+              customViews
+                ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
+                : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
+            }`}
+          >
+            Custom
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMaxViews(9999); setCustomViews(false) }}
+            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+              maxViews === 9999 && !customViews
+                ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
+                : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
+            }`}
+          >
+            Unlimited
+          </button>
         </div>
+
+        {/* Custom input */}
+        {customViews && (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={maxViews === 9999 ? '' : maxViews}
+              onChange={(e) => {
+                const val = parseInt(e.target.value)
+                if (!isNaN(val) && val >= 1 && val <= 100) setMaxViews(val)
+              }}
+              placeholder="Enter number (1-100)"
+              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75]"
+            />
+            <span className="text-xs text-gray-400 whitespace-nowrap">max 100</span>
+          </div>
+        )}
+
+        {/* Info */}
+        <p className="text-[10px] text-gray-400 mt-1.5">
+          {maxViews === 9999 ? 'No limit — link stays active until expired' 
+          : maxViews === 1 ? 'Burn after reading — destroyed after 1 view'
+          : `Link destroyed after ${maxViews} views`}
+        </p>
+      </div>
         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
           <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Link expires in</label>
-          <select value={expiresInHours} onChange={(e) => setExpiresInHours(Number(e.target.value))} className={selectClass}>
-            {EXPIRE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <select
+          value={expiresInHours}
+          onChange={(e) => setExpiresInHours(Number(e.target.value))}
+          className={selectClass}
+        >
+          {availableExpireOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         </div>
       </div>
 
@@ -407,7 +581,7 @@ export default function CreateForm() {
       {/* ENCRYPTION MODE */}
       <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5 mb-4">
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          Encryption mode
+          Additional Password Protection
         </label>
         <label className="flex items-start gap-3 cursor-pointer group mb-3">
           <div className="relative flex-shrink-0 mt-0.5">
@@ -426,13 +600,12 @@ export default function CreateForm() {
           </div>
           <div>
             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-              Protect with passphrase
+              Protect with additional password
             </span>
             <p className="text-xs text-gray-400 mt-0.5">
               {usePassphrase
-                ? 'Key derived from passphrase — not stored in URL. Recipient must know this passphrase.'
-                : 'Random key stored in URL fragment — easier to share but URL must stay private.'}
-            </p>
+              ? 'Recipient must enter this password to decrypt the secret. Share it through a separate channel.'
+              : 'No additional password. A random key is stored in the URL fragment.'}</p>
           </div>
         </label>
         {usePassphrase && (
@@ -465,12 +638,21 @@ export default function CreateForm() {
       {/* RESULT */}
       {result ? (
         <div className="border border-[#9fe1cb] dark:border-[#1d9e75]/40 bg-[#e1f5ee]/40 dark:bg-[#0f3d30]/40 rounded-xl p-4 mb-4">
-          <p className="text-xs font-semibold text-[#0f6e56] uppercase tracking-widest mb-3">✓ Secure link ready</p>
+          <p className="text-xs font-semibold text-[#0f6e56] uppercase tracking-widest mb-3">
+            ✓ Secure link ready
+          </p>
+
+          <div className="flex gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 mb-3">
+            <span className="text-amber-500 text-xs">⚠</span>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              <span className="font-semibold">Save this link now.</span> It will not be shown again. If you lose the full link, the secret cannot be decrypted.
+            </p>
+          </div>
           <div className="flex gap-2 mb-3">
-            <div className="flex-1 text-sm font-mono bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 text-gray-600 dark:text-gray-400 truncate">
+            <div className="flex-1 ...">
               {encryptionMode === 'passphrase'
-                ? `${typeof window !== 'undefined' ? window.location.origin : ''}/s/${result.links[0]?.token}`
-                : `${typeof window !== 'undefined' ? window.location.origin : ''}/s/${result.links[0]?.token}#key=***`
+                ? `${window.location.origin}/s/${result.links[0]?.token}`
+                : `${window.location.origin}/s/${result.links[0]?.token}#key=***`
               }
             </div>
             <Button variant="outline" size="sm" onClick={handleCopy}>
