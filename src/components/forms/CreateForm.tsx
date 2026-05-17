@@ -138,7 +138,14 @@ const availableExpireOptions = [
     const maxBytes = maxMB * 1024 * 1024
     if (file.size > maxBytes) {
       const sizeMB = (file.size / 1024 / 1024).toFixed(1)
-      setFileError(`File too large (${sizeMB} MB). Maximum allowed size is ${maxMB} MB${!isLoggedIn ? ' for anonymous users. Login for up to 100 MB.' : '.'}`)
+      const registeredMaxMB = quotaStatus?.registered_max_file_size_mb ?? 0
+      setFileError(
+        `File too large (${sizeMB} MB). Maximum allowed size is ${maxMB} MB${
+          !isLoggedIn && registeredMaxMB
+            ? ` for anonymous users. Login for up to ${registeredMaxMB} MB.`
+            : '.'
+        }`
+      )
       return
     }
 

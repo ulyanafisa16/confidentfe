@@ -27,8 +27,6 @@ export default function SecretAccessPage({ token }: Props) {
     const fetchMeta = async () => {
       try {
         const data = await getSecretInfo(token)
-        console.log('Raw meta dari Django:', data)
-        console.log('requires_email:', data.requires_email)
         const meta: SecretMetaResponse = {
           token: data.token,
           expires_at: data.expires_at,

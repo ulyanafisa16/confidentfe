@@ -20,7 +20,7 @@ const dmSerif = DM_Serif_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'SecretDrop — Share secrets that disappear',
+  title: 'OneTimeUnlock — Share secrets that disappear',
   description: 'Send passwords, API keys, or confidential notes through a secure link.',
 }
 

@@ -42,7 +42,7 @@ export interface CreateSecretPayload {
   encryption_tag: string
   encryption_salt: string
   max_views: number
-  expires_in: number
+  expires_in?: number
   email_whitelist: string[]
   access_password?: string 
   notify_on_open: boolean
@@ -190,4 +190,5 @@ export interface QuotaStatus {
   max_file_size_mb: number
   max_recipients: number
   max_expiry_days: number
+  registered_max_file_size_mb?: number
 }
