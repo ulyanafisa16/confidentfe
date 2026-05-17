@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Lock, FileText, File, Check, Copy, Eye, Bell } from 'lucide-react'
+import { Lock, FileText, File, Check, Copy, Eye, EyeOff, Bell } from 'lucide-react'
 import Link from 'next/link'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -57,6 +57,8 @@ export default function CreateForm() {
   const [encryptionMode, setEncryptionMode] = useState<'url-key' | 'passphrase'>('url-key')
   const [fileError, setFileError] = useState('')
   const [customViews, setCustomViews] = useState(false)
+  const [copiedPassphrase, setCopiedPassphrase] = useState(false)
+  const [showResultPassphrase, setShowResultPassphrase] = useState(false)
 
   const anonQuota = quotaStatus?.remaining ?? 3
   const maxPerDay = quotaStatus?.max_per_day ?? 3
@@ -108,6 +110,12 @@ const availableExpireOptions = [
     setTimeout(() => setCopied(false), 2500)
   }
 
+  const handleCopyPassphrase = () => {
+    navigator.clipboard.writeText(encPassphrase)
+    setCopiedPassphrase(true)
+    setTimeout(() => setCopiedPassphrase(false), 2500)
+  }
+
   const handleReset = () => {
     setResult(null)
     setContent('')
@@ -121,6 +129,8 @@ const availableExpireOptions = [
     setEncPassphrase('')
     setEncryptionMode('url-key')
     setCustomViews(false)
+    setCopiedPassphrase(false)
+    setShowResultPassphrase(false)
   }
 
   const handleFileSelect = (file: File) => {
@@ -384,10 +394,8 @@ const availableExpireOptions = [
         </label>
 
         {/* Max size info */}
-        <p className="text-xs text-gray-400 mb-2">
-          Max size: <span className="font-medium">{maxFileSizeMB} MB</span>
-          {' · '}PDF, Word, Excel, images, ZIP, TXT, CSV, XML
-          {' · '}Executable files not allowed (.exe, .bat, .sh, etc)
+        <p className="text-xs text-gray-400 mb-3">
+          Max {maxFileSizeMB} MB · PDF, Office, images, ZIP, TXT, CSV, XML
         </p>
 
         <div
@@ -481,97 +489,70 @@ const availableExpireOptions = [
 
       {/* OPTIONS GRID */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-      <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
-        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          Allowed views
-        </label>
-        
-        {/* Preset options */}
-        <div className="flex gap-1 flex-wrap mb-2">
-          {[1, 3, 5, 10].map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => { setMaxViews(v); setCustomViews(false) }}
-              className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-                maxViews === v && !customViews
-                  ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
-              }`}
-            >
-              {v}×
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setCustomViews(true)}
-            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-              customViews
-                ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
-                : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
-            }`}
-          >
-            Custom
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMaxViews(9999); setCustomViews(false) }}
-            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-              maxViews === 9999 && !customViews
-                ? 'bg-[#1d9e75] text-white border-[#1d9e75]'
-                : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-[#1d9e75]'
-            }`}
-          >
-            Unlimited
-          </button>
-        </div>
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
+          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            View limit
+          </label>
 
-        {/* Custom input */}
-        {customViews && (
-          <div className="flex items-center gap-2">
+          <select
+            value={customViews ? 'custom' : maxViews}
+            onChange={(e) => {
+              if (e.target.value === 'custom') {
+                setCustomViews(true)
+                setMaxViews(1)
+              } else {
+                setCustomViews(false)
+                setMaxViews(Number(e.target.value))
+              }
+            }}
+            className={selectClass}
+          >
+            <option value={1}>1 view — burn after reading</option>
+            <option value={3}>3 views</option>
+            <option value={5}>5 views</option>
+            <option value={10}>10 views</option>
+            <option value={9999}>Unlimited</option>
+            <option value="custom">Custom</option>
+          </select>
+
+          {customViews && (
             <input
               type="number"
               min={1}
               max={100}
-              value={maxViews === 9999 ? '' : maxViews}
+              value={maxViews}
               onChange={(e) => {
                 const val = parseInt(e.target.value)
                 if (!isNaN(val) && val >= 1 && val <= 100) setMaxViews(val)
               }}
-              placeholder="Enter number (1-100)"
-              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75]"
+              placeholder="Enter number of views"
+              className="mt-2 w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75]"
             />
-            <span className="text-xs text-gray-400 whitespace-nowrap">max 100</span>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Info */}
-        <p className="text-[10px] text-gray-400 mt-1.5">
-          {maxViews === 9999 ? 'No limit — link stays active until expired' 
-          : maxViews === 1 ? 'Burn after reading — destroyed after 1 view'
-          : `Link destroyed after ${maxViews} views`}
-        </p>
-      </div>
         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5">
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Link expires in</label>
+          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            Expiry time
+          </label>
           <select
-          value={expiresInHours}
-          onChange={(e) => setExpiresInHours(Number(e.target.value))}
-          className={selectClass}
-        >
-          {availableExpireOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+            value={expiresInHours}
+            onChange={(e) => setExpiresInHours(Number(e.target.value))}
+            className={selectClass}
+          >
+            {availableExpireOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* EMAIL WHITELIST */}
       <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5 mb-4">
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          Email whitelist <span className="normal-case font-normal">(optional)</span>
+          Access restriction <span className="normal-case font-normal">(optional)</span>
         </label>
         <EmailWhitelist
           emails={emails}
@@ -588,7 +569,7 @@ const availableExpireOptions = [
       {/* ENCRYPTION MODE */}
       <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5 mb-4">
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          Additional Password Protection
+          Passphrase protection
         </label>
         <label className="flex items-start gap-3 cursor-pointer group mb-3">
           <div className="relative flex-shrink-0 mt-0.5">
@@ -607,13 +588,13 @@ const availableExpireOptions = [
           </div>
           <div>
             <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-              Protect with additional password
+              Protect with passphrase
             </span>
             <p className="text-xs text-gray-400 mt-0.5">
               {usePassphrase
-              ? 'Recipient must enter this password to decrypt the secret. Share it through a separate channel.'
-              : 'No additional password. A random key is stored in the URL fragment.'}</p>
-          </div>
+                ? 'The recipient must enter this passphrase to decrypt the secret.'
+                : 'No passphrase. A random key will be stored in the URL fragment.'}</p>
+        </div>
         </label>
         {usePassphrase && (
           <div className="space-y-2">
@@ -622,7 +603,7 @@ const availableExpireOptions = [
               value={encPassphrase}
               onChange={(e) => setEncPassphrase(e.target.value)}
               placeholder="Enter a strong passphrase..."
-              hint="Share this passphrase with the recipient via a separate channel"
+              hint="Share it through a separate channel"
             />
             {encPassphrase && encPassphrase.length < 12 && (
               <p className="text-xs text-amber-500">
@@ -668,18 +649,34 @@ const availableExpireOptions = [
             </Button>
           </div>
 
-          {encryptionMode === 'passphrase' ? (
-            <div className="flex gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 mb-3">
-              <span className="text-amber-500 text-xs">⚠</span>
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                <span className="font-semibold">Passphrase required.</span> Share the passphrase with recipient via a separate channel. Without it, the secret cannot be decrypted.
+          {encryptionMode === 'passphrase' && encPassphrase && (
+            <div className="mb-3">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+                Passphrase
               </p>
-            </div>
-          ) : (
-            <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/40 mb-3">
-              <span className="text-blue-500 text-xs">ℹ</span>
-              <p className="text-xs text-blue-600 dark:text-blue-400">
-                The decryption key is in the URL. Keep the full link private.
+
+              <div className="flex gap-2">
+                <div className="flex-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-sm font-mono text-gray-800 dark:text-gray-200">
+                  {showResultPassphrase ? encPassphrase : '••••••••••'}
+                </div>
+
+                {/* Eye button */}
+                <button
+                  type="button"
+                  onClick={() => setShowResultPassphrase(!showResultPassphrase)}
+                  className="px-2 h-[36px] flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  {showResultPassphrase ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+
+                <Button variant="outline" size="sm" onClick={handleCopyPassphrase}>
+                  {copiedPassphrase ? <Check size={13} /> : <Copy size={13} />}
+                  {copiedPassphrase ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+
+              <p className="text-xs text-amber-500 mt-1">
+                Share this passphrase via a separate channel.
               </p>
             </div>
           )}

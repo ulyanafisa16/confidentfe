@@ -74,7 +74,7 @@ export default function EmailWhitelist({ emails, domains, onEmailsChange, onDoma
       {mode === 'email' ? (
         <>
           <p className="text-[10px] text-gray-400 mb-2">
-            Type an email, then click <span className="font-medium text-gray-500">+ Add</span> atau tekan <span className="font-medium text-gray-500">Enter</span>
+            Add allowed emails or domains.
           </p>
           <div className="flex gap-2">
             <input
