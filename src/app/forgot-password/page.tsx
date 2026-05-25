@@ -13,16 +13,31 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) { setError('Email wajib diisi'); return }
+
+    if (!email.trim()) {
+      setError('Email is required.')
+      return
+    }
+
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address. Example: user@example.com')
+      return
+    }
+
     setLoading(true)
     setError('')
+
     try {
-      await api.post('/auth/forgot-password/', { email })
+      await api.post('/auth/forgot-password/', {
+        email: email.trim(),
+      })
       setSent(true)
     } catch {
-      setError('Terjadi kesalahan. Coba lagi.')
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }

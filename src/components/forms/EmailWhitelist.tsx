@@ -80,10 +80,18 @@ export default function EmailWhitelist({ emails, domains, onEmailsChange, onDoma
             <input
               type="email"
               value={emailInput}
-              onChange={(e) => { setEmailInput(e.target.value); setEmailError('') }}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addEmail())}
+              onChange={(e) => {
+                setEmailInput(e.target.value)
+                setEmailError('')
+              }}
+              onKeyDown={(e) =>
+                e.key === 'Enter' && (e.preventDefault(), addEmail())
+              }
+              onBlur={() => {
+                if (emailInput.trim()) addEmail()
+              }}
               placeholder="recipient@example.com"
-              className="flex-1 text-sm px-3.5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75] transition-all"
+              className="w-full text-sm pl-7 pr-3.5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75] transition-all"
             />
             <button
               type="button"
@@ -120,6 +128,7 @@ export default function EmailWhitelist({ emails, domains, onEmailsChange, onDoma
                 value={domainInput}
                 onChange={(e) => { setDomainInput(e.target.value); setDomainError('') }}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDomain())}
+                onBlur={() => { if (domainInput.trim()) addDomain() }}
                 placeholder="companyabc.com"
                 className="w-full text-sm pl-7 pr-3.5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-[#1d9e75] focus:ring-1 focus:ring-[#1d9e75] transition-all"
               />

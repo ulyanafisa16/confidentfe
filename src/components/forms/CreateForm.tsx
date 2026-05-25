@@ -569,7 +569,7 @@ const availableExpireOptions = [
       {/* ENCRYPTION MODE */}
       <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3.5 mb-4">
         <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
-          Passphrase protection
+          Password Protection
         </label>
         <label className="flex items-start gap-3 cursor-pointer group mb-3">
           <div className="relative flex-shrink-0 mt-0.5">
@@ -587,13 +587,10 @@ const availableExpireOptions = [
             </div>
           </div>
           <div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-              Protect with passphrase
-            </span>
             <p className="text-xs text-gray-400 mt-0.5">
               {usePassphrase
-                ? 'The recipient must enter this passphrase to decrypt the secret.'
-                : 'No passphrase. A random key will be stored in the URL fragment.'}</p>
+                ? 'The recipient must enter this password to decrypt the secret.'
+                : 'No extra password required.'}</p>
         </div>
         </label>
         {usePassphrase && (
@@ -602,7 +599,7 @@ const availableExpireOptions = [
               type="password"
               value={encPassphrase}
               onChange={(e) => setEncPassphrase(e.target.value)}
-              placeholder="Enter a strong passphrase..."
+              placeholder="Enter a strong password..."
               hint="Share it through a separate channel"
             />
             {encPassphrase && encPassphrase.length < 12 && (
@@ -652,7 +649,7 @@ const availableExpireOptions = [
           {encryptionMode === 'passphrase' && encPassphrase && (
             <div className="mb-3">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
-                Passphrase
+                Password
               </p>
 
               <div className="flex gap-2">

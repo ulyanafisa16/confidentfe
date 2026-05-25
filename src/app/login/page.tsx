@@ -35,7 +35,7 @@ export default function LoginPage() {
       const data = e?.response?.data
       if (data?.detail) setError(data.detail)
       else if (data?.non_field_errors) setError(data.non_field_errors[0])
-      else setError('Email atau password salah.')
+      else setError('Invalid email or password.')
     } finally {
       setLoading(false)
     }

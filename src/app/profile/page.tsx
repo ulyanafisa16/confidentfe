@@ -59,29 +59,53 @@ export default function ProfilePage() {
   }
 
   const handleChangePassword = async () => {
-    if (!newPassword || !oldPassword) { setPwdError('All fields required'); return }
-    if (newPassword !== confirmPassword) { setPwdError('Passwords do not match'); return }
-    if (newPassword.length < 8) { setPwdError('Password must be at least 8 characters'); return }
-    setPwdSaving(true)
     setPwdMsg('')
     setPwdError('')
+
+    if (!newPassword || !oldPassword || !confirmPassword) {
+      setPwdError('All fields required')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPwdError('Passwords do not match')
+      return
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
+    if (!passwordRegex.test(newPassword)) {
+      setPwdError('Password must contain uppercase, lowercase, and number')
+      return
+    }
+
+    setPwdSaving(true)
+
     try {
       await api.post('/auth/change-password/', {
         old_password: oldPassword,
         new_password: newPassword,
       })
+
       setPwdMsg('Password changed successfully!')
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
       setTimeout(() => setPwdMsg(''), 3000)
     } catch (e: any) {
-      setPwdError(e?.response?.data?.message || e?.response?.data?.detail || 'Failed to change password.')
+      console.error('Change password error:', e)
+
+      setPwdError(
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        e?.response?.data?.old_password?.[0] ||
+        e?.response?.data?.new_password?.[0] ||
+        'Current password is incorrect or failed to change password.'
+      )
     } finally {
       setPwdSaving(false)
     }
   }
-
   const handleLogout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
