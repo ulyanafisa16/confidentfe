@@ -97,8 +97,9 @@ export default function DashboardPage() {
     setConfirmDialog({
       open: true,
       secretId: id,
-      title: 'Revoke secret ini?',
-      message: 'Secret dan semua link-nya akan dimatikan permanen. Penerima tidak akan bisa membuka link tersebut lagi. Tindakan ini tidak bisa dibatalkan.',
+      title: 'Revoke this secret?',
+      message:
+        'Access to this secret will be permanently disabled and all associated links will stop working. This action cannot be undone.',
     })
   }
 
@@ -333,10 +334,10 @@ export default function DashboardPage() {
       {deleteDialog?.open && (
         <ConfirmDialog
           isOpen={deleteDialog.open}
-          title="Hapus riwayat secret?"
-          message="Riwayat secret ini akan dihapus permanen dari dashboard. Tindakan ini tidak bisa dibatalkan."
-          confirmLabel="Ya, hapus riwayat"
-          cancelLabel="Batal"
+          title="Delete this secret history?"
+          message="This secret record will be permanently removed from your dashboard. This action cannot be undone."
+          confirmLabel="Delete History"
+          cancelLabel="Cancel"
           variant="danger"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteDialog(null)}

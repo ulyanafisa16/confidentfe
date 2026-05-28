@@ -180,6 +180,10 @@ const availableExpireOptions = [
         return
       }
     }
+     if (usePassphrase && !encPassphrase.trim()) {
+        setError('Please enter a password or disable password protection.')
+        return
+      }
     if (!isLoggedIn && quotaStatus !== null && (quotaStatus.remaining ?? 1) <= 0) {
       setError('Daily limit reached. Please login to create more secrets.')
       return
